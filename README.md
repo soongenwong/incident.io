@@ -1,4 +1,4 @@
-# Internships
+# Internships, Placements and Graduate Take Home Assessment
 
 [job-ad]: https://jobs.ashbyhq.com/incident/c6436752-7f35-4936-9cbd-f372f55e4823
 
