@@ -80,7 +80,7 @@ We'll only accept submissions where you are the primary contributor to the
 project: group projects are great but become extremely difficult to evaluate
 fairly!
 
-Please also attach a (maximum) 5-minute Loom explaining:
+**Important: Please also attach a (maximum) 5-minute Loom explaining:**
 1. Overview of your solution
 2. Key technical decisions
 3. Trade-offs and alternatives (what would you do differently next time?)
@@ -216,7 +216,7 @@ includes:
   you might build on top of this (if you think how we'd use this at incident.io,
   for example).
 
-Please also attach a (maximum) 5-minute Loom explaining:
+**Important: Please also attach a (maximum) 5-minute Loom explaining:**
 1. Overview of your solution
 2. Key technical decisions
 3. Trade-offs and alternatives (what would you do differently next time?)
