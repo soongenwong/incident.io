@@ -89,7 +89,7 @@ That means:
 
 Visually, this might look like this:
 
-![Schedule](./schedule.png)
+![Schedule](./schedule2025.png)
 
 Schedule systems often support 'overrides' where you can add temporary shift
 modifications to a schedule, such as if someone wants to go walk their dog or go
