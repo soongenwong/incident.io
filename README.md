@@ -173,3 +173,115 @@ In the 'notes' field, include a link to a 5-minute video explaining:
 
 (We recommend [Loom](https://www.loom.com) for recording this, but you're welcome 
 to use any other tool you're comfortable with).
+
+---
+
+## Solution
+
+### Installation
+
+This solution is implemented in Python 3. No external dependencies are required beyond the Python standard library.
+
+**Requirements:**
+- Python 3.7 or higher
+
+To verify your Python version:
+```bash
+python3 --version
+```
+
+### Usage
+
+The script can be run directly from the command line:
+
+```bash
+./render-schedule \
+    --schedule=schedule.json \
+    --overrides=overrides.json \
+    --from='2025-11-07T17:00:00Z' \
+    --until='2025-11-21T17:00:00Z'
+```
+
+**Parameters:**
+- `--schedule`: Path to the JSON file containing the schedule configuration
+- `--overrides`: Path to the JSON file containing the list of overrides
+- `--from`: Start time for the schedule range (ISO 8601 format)
+- `--until`: End time for the schedule range (ISO 8601 format)
+
+### Example Files
+
+**schedule.json:**
+```json
+{
+  "users": [
+    "alice",
+    "bob",
+    "charlie"
+  ],
+  "handover_start_at": "2025-11-07T17:00:00Z",
+  "handover_interval_days": 7
+}
+```
+
+**overrides.json:**
+```json
+[
+  {
+    "user": "charlie",
+    "start_at": "2025-11-10T17:00:00Z",
+    "end_at": "2025-11-10T22:00:00Z"
+  }
+]
+```
+
+### Example Output
+
+Running the command with the example files:
+```bash
+./render-schedule \
+    --schedule=schedule.json \
+    --overrides=overrides.json \
+    --from='2025-11-07T17:00:00Z' \
+    --until='2025-11-21T17:00:00Z'
+```
+
+Will produce:
+```json
+[
+  {
+    "user": "alice",
+    "start_at": "2025-11-07T17:00:00Z",
+    "end_at": "2025-11-10T17:00:00Z"
+  },
+  {
+    "user": "charlie",
+    "start_at": "2025-11-10T17:00:00Z",
+    "end_at": "2025-11-10T22:00:00Z"
+  },
+  {
+    "user": "alice",
+    "start_at": "2025-11-10T22:00:00Z",
+    "end_at": "2025-11-14T17:00:00Z"
+  },
+  {
+    "user": "bob",
+    "start_at": "2025-11-14T17:00:00Z",
+    "end_at": "2025-11-21T17:00:00Z"
+  }
+]
+```
+
+### How It Works
+
+The algorithm follows these steps:
+
+1. **Generate Base Schedule**: Calculate the rotation schedule based on the handover start time, interval, and user list
+2. **Apply Overrides**: Split and modify base schedule entries where overrides occur
+3. **Truncate to Range**: Clip all entries to fit within the requested time range (`--from` to `--until`)
+
+The solution handles:
+- Multiple users rotating through shifts
+- Overrides that can split scheduled shifts
+- Multiple overrides in a single shift
+- Proper truncation of entries to the requested time range
+- Edge cases where overrides extend beyond shift boundaries

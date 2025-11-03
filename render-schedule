@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+"""
+render-schedule: A scheduling algorithm implementation for incident.io take-home challenge.
+
+This script renders a schedule based on a rotation configuration and overrides.
+"""
+
+import argparse
+import json
+import sys
+from datetime import datetime, timedelta
+from typing import List, Dict, Any
+
+
+def parse_iso_datetime(dt_str: str) -> datetime:
+    """Parse an ISO 8601 datetime string."""
+    return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+
+
+def load_json_file(filepath: str) -> Any:
+    """Load and parse a JSON file."""
+    try:
+        with open(filepath, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Error: File '{filepath}' not found.", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in '{filepath}': {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def generate_base_schedule(schedule: Dict[str, Any], from_dt: datetime, until_dt: datetime) -> List[Dict[str, Any]]:
+    """
+    Generate the base schedule entries based on rotation configuration.
+    
+    Args:
+        schedule: Schedule configuration with users, handover_start_at, handover_interval_days
+        from_dt: Start of the time range to generate entries for
+        until_dt: End of the time range to generate entries for
+    
+    Returns:
+        List of schedule entries with user, start_at, and end_at
+    """
+    users = schedule['users']
+    handover_start = parse_iso_datetime(schedule['handover_start_at'])
+    interval_days = schedule['handover_interval_days']
+    interval = timedelta(days=interval_days)
+    
+    entries = []
+    
+    # Find the first shift that overlaps with or comes after from_dt
+    # Calculate which user index and shift start time we need
+    if from_dt < handover_start:
+        # Start from the first shift
+        current_start = handover_start
+        user_index = 0
+    else:
+        # Calculate how many shifts have passed since handover_start
+        time_diff = from_dt - handover_start
+        shifts_passed = int(time_diff.total_seconds() / interval.total_seconds())
+        
+        # Start from the shift that contains from_dt
+        current_start = handover_start + (shifts_passed * interval)
+        user_index = shifts_passed % len(users)
+    
+    # Generate entries until we reach until_dt
+    while current_start < until_dt:
+        current_end = current_start + interval
+        
+        # Only add entries that overlap with the requested range
+        if current_end > from_dt:
+            entries.append({
+                'user': users[user_index],
+                'start_at': current_start.isoformat().replace('+00:00', 'Z'),
+                'end_at': current_end.isoformat().replace('+00:00', 'Z')
+            })
+        
+        current_start = current_end
+        user_index = (user_index + 1) % len(users)
+    
+    return entries
+
+
+def apply_overrides(base_entries: List[Dict[str, Any]], overrides: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Apply overrides to the base schedule entries.
+    
+    This function splits and modifies base entries based on override periods.
+    
+    Args:
+        base_entries: List of base schedule entries
+        overrides: List of override entries
+    
+    Returns:
+        List of final schedule entries with overrides applied
+    """
+    result = []
+    
+    for base_entry in base_entries:
+        base_start = parse_iso_datetime(base_entry['start_at'])
+        base_end = parse_iso_datetime(base_entry['end_at'])
+        base_user = base_entry['user']
+        
+        # Find all overrides that overlap with this base entry
+        overlapping_overrides = []
+        for override in overrides:
+            override_start = parse_iso_datetime(override['start_at'])
+            override_end = parse_iso_datetime(override['end_at'])
+            
+            # Check if override overlaps with base entry
+            if override_start < base_end and override_end > base_start:
+                overlapping_overrides.append({
+                    'user': override['user'],
+                    'start': override_start,
+                    'end': override_end
+                })
+        
+        # Sort overrides by start time
+        overlapping_overrides.sort(key=lambda x: x['start'])
+        
+        if not overlapping_overrides:
+            # No overrides, keep the base entry as is
+            result.append(base_entry)
+        else:
+            # Split the base entry around overrides
+            current_time = base_start
+            
+            for override in overlapping_overrides:
+                override_start = max(override['start'], base_start)
+                override_end = min(override['end'], base_end)
+                
+                # Add base entry before override (if there's a gap)
+                if current_time < override_start:
+                    result.append({
+                        'user': base_user,
+                        'start_at': current_time.isoformat().replace('+00:00', 'Z'),
+                        'end_at': override_start.isoformat().replace('+00:00', 'Z')
+                    })
+                
+                # Add override entry
+                result.append({
+                    'user': override['user'],
+                    'start_at': override_start.isoformat().replace('+00:00', 'Z'),
+                    'end_at': override_end.isoformat().replace('+00:00', 'Z')
+                })
+                
+                current_time = override_end
+            
+            # Add remaining base entry after last override
+            if current_time < base_end:
+                result.append({
+                    'user': base_user,
+                    'start_at': current_time.isoformat().replace('+00:00', 'Z'),
+                    'end_at': base_end.isoformat().replace('+00:00', 'Z')
+                })
+    
+    return result
+
+
+def truncate_entries(entries: List[Dict[str, Any]], from_dt: datetime, until_dt: datetime) -> List[Dict[str, Any]]:
+    """
+    Truncate entries to fit within the from/until time range.
+    
+    Args:
+        entries: List of schedule entries
+        from_dt: Start of the time range
+        until_dt: End of the time range
+    
+    Returns:
+        List of truncated entries
+    """
+    truncated = []
+    
+    for entry in entries:
+        entry_start = parse_iso_datetime(entry['start_at'])
+        entry_end = parse_iso_datetime(entry['end_at'])
+        
+        # Skip entries that don't overlap with the range
+        if entry_end <= from_dt or entry_start >= until_dt:
+            continue
+        
+        # Truncate to fit within the range
+        truncated_start = max(entry_start, from_dt)
+        truncated_end = min(entry_end, until_dt)
+        
+        truncated.append({
+            'user': entry['user'],
+            'start_at': truncated_start.isoformat().replace('+00:00', 'Z'),
+            'end_at': truncated_end.isoformat().replace('+00:00', 'Z')
+        })
+    
+    return truncated
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Render a schedule with overrides for a given time range.'
+    )
+    parser.add_argument('--schedule', required=True, help='Path to schedule JSON file')
+    parser.add_argument('--overrides', required=True, help='Path to overrides JSON file')
+    parser.add_argument('--from', dest='from_time', required=True, help='Start time (ISO 8601 format)')
+    parser.add_argument('--until', required=True, help='End time (ISO 8601 format)')
+    
+    args = parser.parse_args()
+    
+    # Load input files
+    schedule = load_json_file(args.schedule)
+    overrides = load_json_file(args.overrides)
+    
+    # Parse time range
+    from_dt = parse_iso_datetime(args.from_time)
+    until_dt = parse_iso_datetime(args.until)
+    
+    # Generate base schedule
+    base_entries = generate_base_schedule(schedule, from_dt, until_dt)
+    
+    # Apply overrides
+    entries_with_overrides = apply_overrides(base_entries, overrides)
+    
+    # Truncate entries to fit within the requested time range
+    final_entries = truncate_entries(entries_with_overrides, from_dt, until_dt)
+    
+    # Output as JSON
+    print(json.dumps(final_entries, indent=2))
+
+
+if __name__ == '__main__':
+    main()
