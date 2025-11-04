@@ -178,35 +178,73 @@ to use any other tool you're comfortable with).
 
 ## Solution
 
-### Installation
+### Prerequisites
 
-This solution is implemented in Python 3. No external dependencies are required beyond the Python standard library.
+This solution is implemented in **Python 3** and uses only the Python standard library.
 
 **Requirements:**
 - Python 3.7 or higher
+- No external dependencies or packages required
 
-To verify your Python version:
+**Check your Python version:**
 ```bash
 python3 --version
 ```
 
+If you don't have Python 3.7+, you can install it:
+- **macOS**: `brew install python3` (if using Homebrew)
+- **Ubuntu/Debian**: `sudo apt-get install python3`
+- **Windows**: Download from [python.org](https://www.python.org/downloads/)
+
+### Installation
+
+**Step 1: Ensure the script is executable**
+
+After extracting the ZIP file, make the script executable:
+
+```bash
+chmod +x render-schedule
+```
+
+**Step 2: Verify it works**
+
+Run a quick test:
+
+```bash
+./render-schedule --schedule=schedule.json --overrides=overrides.json --from='2025-11-07T17:00:00Z' --until='2025-11-21T17:00:00Z'
+```
+
+You should see JSON output with the rendered schedule.
+
 ### Usage
 
-The script can be run directly from the command line:
+**Basic command format:**
 
 ```bash
 ./render-schedule \
+    --schedule=<path-to-schedule.json> \
+    --overrides=<path-to-overrides.json> \
+    --from='<start-time-ISO8601>' \
+    --until='<end-time-ISO8601>'
+```
+
+**Parameters:**
+- `--schedule`: Path to the JSON file containing the schedule configuration
+- `--overrides`: Path to the JSON file containing the list of overrides (use an empty array `[]` for no overrides)
+- `--from`: Start time for the schedule range (ISO 8601 format with timezone, e.g., `2025-11-07T17:00:00Z`)
+- `--until`: End time for the schedule range (ISO 8601 format with timezone, e.g., `2025-11-21T17:00:00Z`)
+
+**Alternative: Run with python3 directly**
+
+If the script isn't executable or you prefer to be explicit:
+
+```bash
+python3 render-schedule \
     --schedule=schedule.json \
     --overrides=overrides.json \
     --from='2025-11-07T17:00:00Z' \
     --until='2025-11-21T17:00:00Z'
 ```
-
-**Parameters:**
-- `--schedule`: Path to the JSON file containing the schedule configuration
-- `--overrides`: Path to the JSON file containing the list of overrides
-- `--from`: Start time for the schedule range (ISO 8601 format)
-- `--until`: End time for the schedule range (ISO 8601 format)
 
 ### Example Files
 
